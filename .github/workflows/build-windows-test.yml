@@ -1,0 +1,56 @@
+name: Build Windows for Testing
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build_windows:
+    runs-on: windows-2022
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        target: x86_64-pc-windows-msvc
+
+    - name: Cache Cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache Cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache Cargo build
+      uses: actions/cache@v4
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build Zed (Release)
+      run: cargo build --release
+
+    - name: Upload Zed executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: Zed-Windows-x86_64
+        path: target/release/zed.exe
+        retention-days: 7
+
+    - name: Upload remote server
+      uses: actions/upload-artifact@v4
+      with:
+        name: zed-remote-server-windows-x86_64
+        path: target/release/zed-remote-server
+        retention-days: 7
+
+    timeout-minutes: 90
