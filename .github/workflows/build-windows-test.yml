@@ -5,10 +5,20 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  CARGO_HOME: "C:\\n"
+
 jobs:
   build_windows:
     runs-on: windows-2022
     steps:
+    - name: Enable Long Paths
+      run: |
+        # Enable long paths in Windows registry
+        Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled' -Value 1
+        # Configure Git to handle long paths
+        git config --global core.longpaths true
+
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -21,13 +31,13 @@ jobs:
     - name: Cache Cargo registry
       uses: actions/cache@v4
       with:
-        path: ~/.cargo/registry
+        path: C:\n\registry
         key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache Cargo index
       uses: actions/cache@v4
       with:
-        path: ~/.cargo/git
+        path: C:\n\git
         key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache Cargo build
@@ -53,4 +63,4 @@ jobs:
         path: target/release/zed-remote-server
         retention-days: 7
 
-    timeout-minutes: 90
+    timeout-minutes: 120
