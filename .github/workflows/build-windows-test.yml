@@ -1,4 +1,4 @@
-name: Build Windows for Testing
+name: Build Zed for Testing
 
 on:
   push:
@@ -46,7 +46,7 @@ jobs:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Build Zed (Release)
+    - name: Build Zed editor
       run: cargo build -p zed --release
 
     - name: Upload Zed executable
@@ -78,8 +78,11 @@ jobs:
           target
         key: linux-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Build Remote Server
-      run: cargo build -p zed-remote-server --release
+    - name: Build remote server
+      run: cargo build -p remote_server --release
+
+    - name: Rename server binary
+      run: mv target/release/remote_server target/release/zed-remote-server
 
     - name: Upload remote server
       uses: actions/upload-artifact@v4
