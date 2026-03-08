@@ -5,13 +5,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  CARGO_HOME: "C:\\n"
-
 jobs:
 
   build_windows:
     runs-on: windows-2022
+
+    env:
+      CARGO_HOME: "C:\\n"
 
     steps:
     - name: Enable Long Paths
@@ -32,19 +32,19 @@ jobs:
       uses: actions/cache@v4
       with:
         path: C:\n\registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        key: windows-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache Cargo index
       uses: actions/cache@v4
       with:
         path: C:\n\git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+        key: windows-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache Cargo build
       uses: actions/cache@v4
       with:
         path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+        key: windows-cargo-target-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Build Zed editor
       run: cargo build -p zed --release
@@ -66,7 +66,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install Linux build dependencies
+    - name: Install Linux dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -75,14 +75,7 @@ jobs:
           cmake \
           ninja-build \
           pkg-config \
-          libssl-dev \
-          libxkbcommon-dev \
-          libwayland-dev \
-          libx11-dev \
-          libxcb1-dev \
-          libxrandr-dev \
-          libxi-dev \
-          libgl1-mesa-dev
+          libssl-dev
 
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
@@ -99,7 +92,7 @@ jobs:
     - name: Build remote server
       run: cargo build -p remote_server --release
 
-    - name: Rename binary for Zed runtime
+    - name: Rename server binary
       run: mv target/release/remote_server target/release/zed-remote-server
 
     - name: Upload remote server
