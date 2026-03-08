@@ -52,7 +52,7 @@ jobs:
     - name: Upload Zed executable
       uses: actions/upload-artifact@v4
       with:
-        name: Zed-Windows-x86_64
+        name: zed-windows-x86_64
         path: target/release/zed.exe
         retention-days: 7
 
@@ -61,19 +61,32 @@ jobs:
 
   build_remote_server:
     runs-on: ubuntu-22.04
-  
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-  
-    - name: Install system dependencies
+
+    - name: Install Linux build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake clang build-essential pkg-config
-  
+        sudo apt-get install -y \
+          clang \
+          build-essential \
+          cmake \
+          ninja-build \
+          pkg-config \
+          libssl-dev \
+          libxkbcommon-dev \
+          libwayland-dev \
+          libx11-dev \
+          libxcb1-dev \
+          libxrandr-dev \
+          libxi-dev \
+          libgl1-mesa-dev
+
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
-  
+
     - name: Cache Cargo
       uses: actions/cache@v4
       with:
@@ -82,18 +95,18 @@ jobs:
           ~/.cargo/git
           target
         key: linux-cargo-${{ hashFiles('**/Cargo.lock') }}
-  
+
     - name: Build remote server
       run: cargo build -p remote_server --release
-  
-    - name: Rename server binary
+
+    - name: Rename binary for Zed runtime
       run: mv target/release/remote_server target/release/zed-remote-server
-  
+
     - name: Upload remote server
       uses: actions/upload-artifact@v4
       with:
         name: zed-remote-server-linux-x86_64
         path: target/release/zed-remote-server
         retention-days: 7
-  
+
     timeout-minutes: 120
