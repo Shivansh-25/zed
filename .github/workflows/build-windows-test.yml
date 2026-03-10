@@ -6,100 +6,96 @@ on:
   workflow_dispatch:
 
 jobs:
-
   build_windows:
     runs-on: windows-2022
+    timeout-minutes: 120
 
     env:
       CARGO_HOME: "C:\\n"
 
     steps:
-    - name: Enable Long Paths
-      run: |
-        Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled' -Value 1
-        git config --global core.longpaths true
+      - name: Enable Long Paths
+        run: |
+          Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled' -Value 1
+          git config --global core.longpaths true
 
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
-        target: x86_64-pc-windows-msvc
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
 
-    - name: Cache Cargo registry
-      uses: actions/cache@v4
-      with:
-        path: C:\n\registry
-        key: windows-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: C:\n\registry
+          key: windows-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Cache Cargo index
-      uses: actions/cache@v4
-      with:
-        path: C:\n\git
-        key: windows-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache Cargo index
+        uses: actions/cache@v4
+        with:
+          path: C:\n\git
+          key: windows-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Cache Cargo build
-      uses: actions/cache@v4
-      with:
-        path: target
-        key: windows-cargo-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache Cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: windows-cargo-target-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Build Zed editor
-      run: cargo build -p zed --release
+      - name: Build Zed editor
+        run: cargo build -p zed --release --features "remote/build-remote-server-binary"
 
-    - name: Upload Zed executable
-      uses: actions/upload-artifact@v4
-      with:
-        name: zed-windows-x86_64
-        path: target/release/zed.exe
-        retention-days: 7
-
-    timeout-minutes: 120
-
+      - name: Upload Zed executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: zed-windows-x86_64
+          path: target/release/zed.exe
+          retention-days: 7
 
   build_remote_server:
     runs-on: ubuntu-22.04
+    timeout-minutes: 120
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Linux dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          clang \
-          build-essential \
-          cmake \
-          ninja-build \
-          pkg-config \
-          libssl-dev
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            build-essential \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libssl-dev
 
-    - name: Setup Rust
-      uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Cache Cargo
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: linux-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Build remote server
-      run: cargo build -p remote_server --release
+      - name: Build remote server
+        run: cargo build -p remote_server --release
 
-    - name: Rename server binary
-      run: mv target/release/remote_server target/release/zed-remote-server
+      - name: Rename server binary
+        run: mv target/release/remote_server target/release/zed-remote-server
 
-    - name: Upload remote server
-      uses: actions/upload-artifact@v4
-      with:
-        name: zed-remote-server-linux-x86_64
-        path: target/release/zed-remote-server
-        retention-days: 7
-
-    timeout-minutes: 120
+      - name: Upload remote server
+        uses: actions/upload-artifact@v4
+        with:
+          name: zed-remote-server-linux-x86_64
+          path: target/release/zed-remote-server
+          retention-days: 7
