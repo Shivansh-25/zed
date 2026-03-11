@@ -53,7 +53,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use util::{RangeExt as _, ResultExt as _};
-use workspace::notifications::{ErrorMessagePrompt, NotificationId, show_app_notification};
 
 pub mod cursor_excerpt;
 pub mod example_spec;
@@ -1218,7 +1217,7 @@ impl EditPredictionStore {
                         cx.subscribe(buffer, {
                             let project = project.downgrade();
                             move |this, buffer, event, cx| {
-                                if let language::BufferEvent::Edited = event
+                                if let language::BufferEvent::Edited { .. } = event
                                     && let Some(project) = project.upgrade()
                                 {
                                     this.report_changes_for_buffer(&buffer, &project, false, cx);
@@ -2470,49 +2469,6 @@ impl EditPredictionStore {
         .await
     }
 
-    fn handle_api_response<T>(
-        this: &WeakEntity<Self>,
-        response: Result<(T, Option<EditPredictionUsage>)>,
-        cx: &mut gpui::AsyncApp,
-    ) -> Result<T> {
-        match response {
-            Ok((data, usage)) => {
-                if let Some(usage) = usage {
-                    this.update(cx, |this, cx| {
-                        this.user_store.update(cx, |user_store, cx| {
-                            user_store.update_edit_prediction_usage(usage, cx);
-                        });
-                    })
-                    .ok();
-                }
-                Ok(data)
-            }
-            Err(err) => {
-                if err.is::<ZedUpdateRequiredError>() {
-                    cx.update(|cx| {
-                        this.update(cx, |this, _cx| {
-                            this.update_required = true;
-                        })
-                        .ok();
-
-                        let error_message: SharedString = err.to_string().into();
-                        show_app_notification(
-                            NotificationId::unique::<ZedUpdateRequiredError>(),
-                            cx,
-                            move |cx| {
-                                cx.new(|cx| {
-                                    ErrorMessagePrompt::new(error_message.clone(), cx)
-                                        .with_link_button("Update Zed", "https://zed.dev/releases")
-                                })
-                            },
-                        );
-                    });
-                }
-                Err(err)
-            }
-        }
-    }
-
     async fn send_api_request<Res>(
         build: impl Fn(http_client::http::request::Builder) -> Result<http_client::Request<AsyncBody>>,
         client: Arc<Client>,
@@ -2798,23 +2754,6 @@ fn merge_trailing_events_if_needed(
         events.truncate(events.len() - mergeable_count);
         events.push_back(merged_event);
     }
-}
-
-pub(crate) fn filter_redundant_excerpts(
-    mut related_files: Vec<RelatedFile>,
-    cursor_path: &Path,
-    cursor_row_range: Range<u32>,
-) -> Vec<RelatedFile> {
-    for file in &mut related_files {
-        if file.path.as_ref() == cursor_path {
-            file.excerpts.retain(|excerpt| {
-                excerpt.row_range.start < cursor_row_range.start
-                    || excerpt.row_range.end > cursor_row_range.end
-            });
-        }
-    }
-    related_files.retain(|file| !file.excerpts.is_empty());
-    related_files
 }
 
 #[derive(Error, Debug)]
