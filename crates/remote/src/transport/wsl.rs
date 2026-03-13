@@ -154,9 +154,24 @@ impl WslRemoteConnection {
     }
 
     async fn run_wsl_command(&self, program: &str, args: &[&str]) -> Result<()> {
-        run_wsl_command_with_output_impl(&self.connection_options, program, args)
-            .await
-            .map(|_| ())
+        let quoted_args: Vec<String> = args
+            .iter()
+            .map(|arg| {
+                self.shell_kind
+                    .try_quote(arg)
+                    .map(|cow| cow.into_owned())
+                    .unwrap_or_else(|| arg.to_string())
+            })
+            .collect();
+
+        run_wsl_command_impl(wsl_command_impl(
+            &self.connection_options,
+            program,
+            &quoted_args,
+            false,
+        ))
+        .await
+        .map(|_| ())
     }
 
     async fn ensure_server_binary(
