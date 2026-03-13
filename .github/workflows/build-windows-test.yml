@@ -2,7 +2,7 @@ name: Build Zed for Testing
 
 on:
   push:
-    branches: [main]
+    branches: [wsl-file-copy]
   workflow_dispatch:
 
 jobs:
