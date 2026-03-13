@@ -154,9 +154,14 @@ impl WslRemoteConnection {
     }
 
     async fn run_wsl_command(&self, program: &str, args: &[&str]) -> Result<()> {
-        run_wsl_command_with_output_impl(&self.connection_options, program, args)
-            .await
-            .map(|_| ())
+        run_wsl_command_impl(wsl_command_impl(
+            &self.connection_options,
+            program,
+            args,
+            false,
+        ))
+        .await
+        .map(|_| ())
     }
 
     async fn ensure_server_binary(
@@ -182,14 +187,23 @@ impl WslRemoteConnection {
 
         if let Some(parent) = dst_path.parent() {
             let parent = parent.display(PathStyle::Posix);
+            let parent = self
+                .shell_kind
+                .try_quote(&parent)
+                .context("shell quoting")?;
             let mkdir = self.shell_kind.prepend_command_prefix("mkdir");
             self.run_wsl_command(&mkdir, &["-p", &parent])
                 .await
                 .map_err(|e| anyhow!("Failed to create directory: {}", e))?;
         }
 
+        let dst_path_str = dst_path.display(PathStyle::Posix);
+        let dst_path_quoted = self
+            .shell_kind
+            .try_quote(&dst_path_str)
+            .context("shell quoting")?;
         let binary_exists_on_server = self
-            .run_wsl_command(&dst_path.display(PathStyle::Posix), &["version"])
+            .run_wsl_command(&dst_path_quoted, &["version"])
             .await
             .is_ok();
 
@@ -255,6 +269,10 @@ impl WslRemoteConnection {
 
         if let Some(parent) = dst_path.parent() {
             let parent = parent.display(PathStyle::Posix);
+            let parent = self
+                .shell_kind
+                .try_quote(&parent)
+                .context("shell quoting")?;
             let mkdir = self.shell_kind.prepend_command_prefix("mkdir");
             self.run_wsl_command(&mkdir, &["-p", &parent])
                 .await
@@ -273,21 +291,27 @@ impl WslRemoteConnection {
         );
 
         let src_path_in_wsl = self.windows_path_to_wsl_path(src_path).await?;
+        let src_path_in_wsl = self
+            .shell_kind
+            .try_quote(&src_path_in_wsl)
+            .context("shell quoting")?;
+        let dst_path = dst_path.display(PathStyle::Posix);
+        let dst_path = self
+            .shell_kind
+            .try_quote(&dst_path)
+            .context("shell quoting")?;
         let cp = self.shell_kind.prepend_command_prefix("cp");
-        self.run_wsl_command(
-            &cp,
-            &["-f", &src_path_in_wsl, &dst_path.display(PathStyle::Posix)],
-        )
-        .await
-        .map_err(|e| {
-            anyhow!(
-                "Failed to copy file {}({}) to WSL {:?}: {}",
-                src_path.display(),
-                src_path_in_wsl,
-                dst_path,
-                e
-            )
-        })?;
+        self.run_wsl_command(&cp, &["-f", &src_path_in_wsl, &dst_path])
+            .await
+            .map_err(|e| {
+                anyhow!(
+                    "Failed to copy file {}({}) to WSL {:?}: {}",
+                    src_path.display(),
+                    src_path_in_wsl,
+                    dst_path,
+                    e
+                )
+            })?;
 
         log::info!("uploaded remote server in {:?}", t0.elapsed());
         Ok(())
@@ -304,6 +328,15 @@ impl WslRemoteConnection {
 
         let tmp_path_str = tmp_path.display(PathStyle::Posix);
         let dst_path_str = dst_path.display(PathStyle::Posix);
+
+        let tmp_path_str = self
+            .shell_kind
+            .try_quote(&tmp_path_str)
+            .context("shell quoting")?;
+        let dst_path_str = self
+            .shell_kind
+            .try_quote(&dst_path_str)
+            .context("shell quoting")?;
 
         // Build extraction script with proper error handling
         let script = if tmp_path_str.ends_with(".gz") {
